@@ -1,5 +1,7 @@
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
+using Newtonsoft.Json;
+using Newtonsoft.Json.Serialization;
 using Vuln.Models;
 using Vuln.Services;
 
@@ -14,11 +16,21 @@ namespace Vuln.Controllers
     {
         private readonly ILogger<VulnerabilityService> _logger;
         private readonly IVulnerabilityService _vulnerabilityService;
+        private readonly SchemaValidator _validator;
+        private readonly JsonSerializerSettings _serializerSettings;
 
         public VulnerabilitiesController(IVulnerabilityService vulnerabilityService, ILogger<VulnerabilityService> logger)
         {
             _vulnerabilityService = vulnerabilityService;
             _logger = logger;
+            _validator = new SchemaValidator();
+            _serializerSettings = new JsonSerializerSettings
+            {
+                ContractResolver = new DefaultContractResolver
+                {
+                    NamingStrategy = new SnakeCaseNamingStrategy()
+                }
+            };
         }
 
         [HttpGet]
@@ -51,6 +63,14 @@ namespace Vuln.Controllers
         public async Task<ActionResult> Post([FromBody] Vulnerability vulnerability)
         {
             // TODO: validate input using JSON schema
+            // Serialize object to JSON and validate against schema
+            string? data = JsonConvert.SerializeObject(vulnerability, _serializerSettings);
+            _logger.LogDebug($"data: {data}");
+            if (!_validator.ValidateVulnerability(data, out var errors))
+            {
+                return BadRequest($"Invalid data: {string.Join(", ", errors)}");
+            }
+
             try
             {
                 await _vulnerabilityService.AddVulnerability(vulnerability);
