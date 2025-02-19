@@ -6,6 +6,7 @@ using System.IdentityModel.Tokens.Jwt;
 using System.Security.Claims;
 using System.Text;
 using Vuln.Models;
+using Vuln.Services;
 
 namespace Vuln.Controllers
 {
@@ -13,26 +14,13 @@ namespace Vuln.Controllers
     [Route("auth")]
     public class AuthController : ControllerBase
     {
-        readonly List<LoginModel> _credentials;
         readonly JwtSettings _jwtSettings;
+        readonly UserService _userService;
 
-        public AuthController(IOptions<JwtSettings> jwtSettings)
+        public AuthController(IOptions<JwtSettings> jwtSettings, UserService userService)
         {
-            _credentials =
-            [
-                new LoginModel
-                {
-                    Username = "test",
-                    Password = "password"
-                },
-                new LoginModel
-                {
-                    Username = "admin",
-                    Password = "notAdminPassword"
-                }
-            ];
-
             _jwtSettings = jwtSettings.Value;
+            _userService = userService;
         }
 
         // TODO: specify responses for openapi docs
@@ -41,16 +29,18 @@ namespace Vuln.Controllers
         [ProducesResponseType(StatusCodes.Status200OK)]
         [ProducesResponseType(StatusCodes.Status500InternalServerError)]
         [AllowAnonymous]
-        public IActionResult GenerateToken([FromBody] LoginModel login)
+        public IActionResult GenerateToken([FromBody] Login login)
         {
-            // Validate the user credentials
-            // TODO: replace with validation logic
-            if (ValidateCredentials(login))
+            if (ValidateCredentials(login, out User? user))
             {
-                var claims = new[]
+                List<Claim> claims = [];
+                if (user != null)
                 {
-                    new Claim(ClaimTypes.Name, login.Username)
-                };
+                    foreach (var role in user.Roles)
+                    {
+                        claims.Add(new Claim(ClaimTypes.Role, role.ToString()));
+                    }
+                }
 
                 // TODO: load key from configurations
                 var key = new SymmetricSecurityKey(Encoding.UTF8.GetBytes(_jwtSettings.SecretKey));
@@ -73,7 +63,7 @@ namespace Vuln.Controllers
                 }
                 catch (ArgumentOutOfRangeException e)
                 {
-                    Console.WriteLine("Could not generate token: " + e.Message);
+                    Console.WriteLine($"Could not generate token: {e.Message}");
                     return StatusCode(500);
                 }
             }
@@ -81,9 +71,15 @@ namespace Vuln.Controllers
             return Unauthorized();
         }
 
-        private bool ValidateCredentials(LoginModel login)
+        private bool ValidateCredentials(Login login, out User? user)
         {
-            return _credentials.Any(c => c.Username == login.Username && c.Password == login.Password);
+            user = _userService.GetUser(login.Username, login.Password);
+            if (user != null)
+            {
+                return true;
+            }
+
+            return false;
         }
     }
 }

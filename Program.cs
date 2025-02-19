@@ -1,10 +1,12 @@
 using System.Text.Json;
 using Microsoft.AspNetCore.Mvc;
-using Vuln.Services;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.IdentityModel.Tokens;
 using Microsoft.OpenApi.Models;
 using System.Text;
+using Vuln.Models;
+using Vuln.Services;
+using Vuln.Enums;
 
 var builder = WebApplication.CreateBuilder(args);
 
@@ -17,9 +19,6 @@ builder.Configuration.AddEnvironmentVariables();
 // Register JwtSettings for dependency injection
 builder.Services.Configure<JwtSettings>(builder.Configuration.GetSection("JwtSettings"));
 
-// Add authoriation services
-builder.Services.AddAuthorization();
-
 // Configure JWT authentication
 // var key = Encoding.UTF8.GetBytes("oG~$Px,qs#@$'WOEi.tWzBRkWEiVC^lefvJ{1E(@V0#(uS.6n,");
 builder.Services.AddAuthentication(JwtBearerDefaults.AuthenticationScheme)
@@ -27,10 +26,9 @@ builder.Services.AddAuthentication(JwtBearerDefaults.AuthenticationScheme)
     {
         JwtSettings _jwtSettings = new();
         builder.Configuration.GetSection("JwtSettings").Bind(_jwtSettings);
-        Console.WriteLine(">>> SecretKey: " + _jwtSettings.SecretKey);
-        
+
         jwtOptions.Authority = "https://vuln.notrev.net";
-        jwtOptions.Audience = "https://vuln.notrev.net";
+        jwtOptions.Audience = _jwtSettings.Audience;
         jwtOptions.TokenValidationParameters = new TokenValidationParameters
         {
             ValidateIssuer = true,
@@ -41,6 +39,13 @@ builder.Services.AddAuthentication(JwtBearerDefaults.AuthenticationScheme)
             ValidIssuers = [_jwtSettings.Issuer]
         };
     });
+
+// Add authoriation services
+builder.Services.AddAuthorization(options =>
+{
+    options.AddPolicy("Writer", policy => policy.RequireRole(UserRole.Writer.ToString()));
+    options.AddPolicy("Reader", policy => policy.RequireRole(UserRole.Reader.ToString()));
+});
 
 builder.Services.AddOpenApi();
 
@@ -87,6 +92,7 @@ builder.Services.AddSwaggerGen(setup =>
 
 // Register the VulnerabilityService for dependency injection
 builder.Services.AddSingleton<VulnerabilityService>();
+builder.Services.AddSingleton<UserService>();
 
 // TODO: remove after debugging
 // builder.Logging.AddDebug(); // Add debug logging

@@ -8,6 +8,8 @@ namespace Vuln.Controllers
     [ApiController]
     [Route("vulnerabilities")]
     [Authorize]
+    [ProducesResponseType(StatusCodes.Status401Unauthorized)]
+    [ProducesResponseType(StatusCodes.Status403Forbidden)]
     public class VulnerabilitiesController : ControllerBase
     {
         private readonly VulnerabilityService _vulnerabilityService;
@@ -18,12 +20,17 @@ namespace Vuln.Controllers
         }
 
         [HttpGet]
+        [Authorize(Policy = "Reader")]
+        [ProducesResponseType(StatusCodes.Status200OK)]
         public ActionResult<List<Vulnerability>> Get()
         {
             return Ok(_vulnerabilityService.GetVulnerabilities());
         }
 
         [HttpGet("{id}")]
+        [Authorize(Policy = "Reader")]
+        [ProducesResponseType(StatusCodes.Status200OK)]
+        [ProducesResponseType(StatusCodes.Status404NotFound)]
         public ActionResult<List<Vulnerability>> Get(string id)
         {
             Vulnerability? vulnerability = _vulnerabilityService.GetVulnerability(id);
@@ -35,22 +42,58 @@ namespace Vuln.Controllers
         }
 
         [HttpPost]
-        public void Post([FromBody] Vulnerability vulnerability)
+        [Authorize(Policy = "Writer")]
+        [ProducesResponseType(StatusCodes.Status201Created)]
+        [ProducesResponseType(StatusCodes.Status500InternalServerError)]
+        public ActionResult Post([FromBody] Vulnerability vulnerability)
         {
             // TODO: validate input using JSON schema
-            _vulnerabilityService.AddVulnerability(vulnerability);
+            try
+            {
+                _vulnerabilityService.AddVulnerability(vulnerability);
+                return Created();
+            }
+            catch (Exception e)
+            {
+                Console.WriteLine($"Error when adding new vulnerability: {e.Message}");
+                return StatusCode(500);
+            }
         }
 
         [HttpPut("{id}")]
-        public void Put(string id, [FromBody] Vulnerability vulnerability)
+        [Authorize(Policy = "Writer")]
+        [ProducesResponseType(StatusCodes.Status204NoContent)]
+        [ProducesResponseType(StatusCodes.Status500InternalServerError)]
+        public ActionResult Put(string id, [FromBody] Vulnerability vulnerability)
         {
             // TODO: validate input using JSON schema
-            _vulnerabilityService.UpdateVulnerability(id, vulnerability);
+            try
+            {
+                _vulnerabilityService.UpdateVulnerability(id, vulnerability);
+                return StatusCode(204);
+            }
+            catch (Exception e)
+            {
+                Console.WriteLine($"Error when adding new vulnerability: {e.Message}");
+                return StatusCode(500);
+            }
         }
 
         [HttpDelete("{id}")]
-        public void Delete(string id) {
-            _vulnerabilityService.DeleteVulnerability(id);
+        [Authorize(Policy = "Writer")]
+        [ProducesResponseType(StatusCodes.Status204NoContent)]
+        [ProducesResponseType(StatusCodes.Status500InternalServerError)]
+        public ActionResult Delete(string id) {
+            try
+            {
+                _vulnerabilityService.DeleteVulnerability(id);
+                return NoContent();
+            }
+            catch (Exception e)
+            {
+                Console.WriteLine($"Error when adding new vulnerability: {e.Message}");
+                return StatusCode(500);
+            }
         }
     }
 }
