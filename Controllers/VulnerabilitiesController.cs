@@ -1,3 +1,4 @@
+using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Vuln.Models;
 using Vuln.Services;
@@ -6,6 +7,7 @@ namespace Vuln.Controllers
 {
     [ApiController]
     [Route("vulnerabilities")]
+    [Authorize]
     public class VulnerabilitiesController : ControllerBase
     {
         private readonly VulnerabilityService _vulnerabilityService;
