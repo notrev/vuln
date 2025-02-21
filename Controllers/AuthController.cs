@@ -1,26 +1,35 @@
 using Microsoft.AspNetCore.Authorization;
+using Microsoft.AspNetCore.Identity;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.Extensions.Options;
 using Microsoft.IdentityModel.Tokens;
 using System.IdentityModel.Tokens.Jwt;
 using System.Security.Claims;
 using System.Text;
+using Vuln.Enums;
 using Vuln.Models;
-using Vuln.Services;
 
 namespace Vuln.Controllers
 {
+    public class UserCredentials
+    {
+        required public ApplicationUser User { get; set; }
+        public List<UserRole> Roles { get; set; } = [];
+    }
+
     [ApiController]
     [Route("auth")]
     public class AuthController : ControllerBase
     {
+        private readonly ILogger<AuthController> _logger;
+        private readonly UserManager<ApplicationUser> _userManager;
         readonly JwtSettings _jwtSettings;
-        readonly UserService _userService;
 
-        public AuthController(IOptions<JwtSettings> jwtSettings, UserService userService)
+        public AuthController(IOptions<JwtSettings> jwtSettings, UserManager<ApplicationUser> userManager, ILogger<AuthController> logger)
         {
             _jwtSettings = jwtSettings.Value;
-            _userService = userService;
+            _logger = logger;
+            _userManager = userManager;
         }
 
         // TODO: specify responses for openapi docs
@@ -29,17 +38,17 @@ namespace Vuln.Controllers
         [ProducesResponseType(StatusCodes.Status200OK)]
         [ProducesResponseType(StatusCodes.Status500InternalServerError)]
         [AllowAnonymous]
-        public IActionResult GenerateToken([FromBody] Login login)
+        public async Task<IActionResult> GenerateToken([FromBody] LoginModel login)
         {
-            if (ValidateCredentials(login, out User? user))
+            UserCredentials? credentials = await GetCredentials(login);
+            _logger.LogDebug($"User {login.Username} is trying to login. Credentials:{credentials}");
+            if (credentials != null)
             {
                 List<Claim> claims = [];
-                if (user != null)
+
+                foreach (var role in credentials.Roles)
                 {
-                    foreach (var role in user.Roles)
-                    {
-                        claims.Add(new Claim(ClaimTypes.Role, role.ToString()));
-                    }
+                    claims.Add(new Claim(ClaimTypes.Role, role.ToString()));
                 }
 
                 // TODO: load key from configurations
@@ -63,7 +72,7 @@ namespace Vuln.Controllers
                 }
                 catch (ArgumentOutOfRangeException e)
                 {
-                    Console.WriteLine($"Could not generate token: {e.Message}");
+                    _logger.LogError($"Could not generate token: {e.Message}");
                     return StatusCode(500);
                 }
             }
@@ -71,15 +80,46 @@ namespace Vuln.Controllers
             return Unauthorized();
         }
 
-        private bool ValidateCredentials(Login login, out User? user)
+        private async Task<UserCredentials?> GetCredentials(LoginModel login)
         {
-            user = _userService.GetUser(login.Username, login.Password);
-            if (user != null)
+            try
             {
-                return true;
+                // Get and validate user
+                var user = await _userManager.FindByNameAsync(login.Username);
+                if (user == null)
+                {
+                    return null;
+                }
+
+                bool isPasswordValid = await _userManager.CheckPasswordAsync(user, login.Password);
+                if (isPasswordValid == false)
+                {
+                    return null;
+                }
+
+                // Get roles
+                List<UserRole> roles = [];
+                var userRoles = await _userManager.GetRolesAsync(user);
+                foreach (var userRole in userRoles)
+                {
+                    if (Enum.TryParse(userRole, out UserRole role))
+                    {
+                        roles.Add(role);
+                    }
+                }
+
+                return new UserCredentials
+                {
+                    User = user,
+                    Roles = roles
+                };
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError($"Error when getting user credentials: {ex.Message}");
             }
 
-            return false;
+            return null;
         }
     }
 }

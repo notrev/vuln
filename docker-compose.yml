@@ -1,0 +1,19 @@
+services:
+
+  db:
+    image: postgres:17.3
+    restart: on-failure
+    # set shared memory limit when using docker-compose
+    shm_size: 128mb
+    ports:
+      - 5432:5432
+    volumes:
+      - db_data:/data
+    environment:
+      POSTGRES_USER: vuln
+      POSTGRES_PASSWORD: dontForgetToSetAStrongPassword
+      POSTGRES_DB: vuln
+      PGDATA: /data
+
+volumes:
+  db_data:

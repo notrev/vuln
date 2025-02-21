@@ -20,7 +20,7 @@ namespace Vuln.Controllers
         }
 
         [HttpGet]
-        [Authorize(Policy = "Reader")]
+        [Authorize(Roles = "Reader")]
         [ProducesResponseType(StatusCodes.Status200OK)]
         public ActionResult<List<Vulnerability>> Get()
         {
@@ -28,7 +28,7 @@ namespace Vuln.Controllers
         }
 
         [HttpGet("{id}")]
-        [Authorize(Policy = "Reader")]
+        [Authorize(Roles = "Reader")]
         [ProducesResponseType(StatusCodes.Status200OK)]
         [ProducesResponseType(StatusCodes.Status404NotFound)]
         public ActionResult<List<Vulnerability>> Get(string id)
@@ -42,7 +42,7 @@ namespace Vuln.Controllers
         }
 
         [HttpPost]
-        [Authorize(Policy = "Writer")]
+        [Authorize(Roles = "Writer")]
         [ProducesResponseType(StatusCodes.Status201Created)]
         [ProducesResponseType(StatusCodes.Status500InternalServerError)]
         public ActionResult Post([FromBody] Vulnerability vulnerability)
@@ -61,7 +61,7 @@ namespace Vuln.Controllers
         }
 
         [HttpPut("{id}")]
-        [Authorize(Policy = "Writer")]
+        [Authorize(Roles = "Writer")]
         [ProducesResponseType(StatusCodes.Status204NoContent)]
         [ProducesResponseType(StatusCodes.Status500InternalServerError)]
         public ActionResult Put(string id, [FromBody] Vulnerability vulnerability)
@@ -80,7 +80,7 @@ namespace Vuln.Controllers
         }
 
         [HttpDelete("{id}")]
-        [Authorize(Policy = "Writer")]
+        [Authorize(Roles = "Writer")]
         [ProducesResponseType(StatusCodes.Status204NoContent)]
         [ProducesResponseType(StatusCodes.Status500InternalServerError)]
         public ActionResult Delete(string id) {
