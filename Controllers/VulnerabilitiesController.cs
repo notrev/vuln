@@ -13,9 +13,9 @@ namespace Vuln.Controllers
     public class VulnerabilitiesController : ControllerBase
     {
         private readonly ILogger<VulnerabilityService> _logger;
-        private readonly VulnerabilityService _vulnerabilityService;
+        private readonly IVulnerabilityService _vulnerabilityService;
 
-        public VulnerabilitiesController(VulnerabilityService vulnerabilityService, ILogger<VulnerabilityService> logger)
+        public VulnerabilitiesController(IVulnerabilityService vulnerabilityService, ILogger<VulnerabilityService> logger)
         {
             _vulnerabilityService = vulnerabilityService;
             _logger = logger;
@@ -77,7 +77,7 @@ namespace Vuln.Controllers
             try
             {
                 await _vulnerabilityService.UpdateVulnerability(id, vulnerability);
-                return StatusCode(204);
+                return NoContent();
             }
             catch (VulnerabilityNotFoundException)
             {

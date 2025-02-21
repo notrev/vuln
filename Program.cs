@@ -96,7 +96,7 @@ builder.Services.AddSwaggerGen(setup =>
 });
 
 // Register the VulnerabilityService for dependency injection
-builder.Services.AddScoped<VulnerabilityService>();
+builder.Services.AddScoped<IVulnerabilityService, VulnerabilityService>();
 
 var app = builder.Build();
 
