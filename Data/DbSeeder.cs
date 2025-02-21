@@ -49,7 +49,7 @@ namespace Vuln.Data
             logger.LogInformation("Seeding UserRoles to database");
             foreach (UserRole role in Enum.GetValues(typeof(UserRole)))
             {
-                if (roleManager != null && (await roleManager.RoleExistsAsync(role.ToString())) == false)
+                if (await roleManager.RoleExistsAsync(role.ToString()) == false)
                 {
                     logger.LogInformation($"{role} role is being created");
                     var roleResult = await roleManager.CreateAsync(new IdentityRole(role.ToString()));
@@ -104,45 +104,55 @@ namespace Vuln.Data
             ];
 
             // Check if any users exist to prevent duplicate seeding
-            logger.LogInformation("Seeding Users to database");
-            if (userManager?.Users.Any() == false)
+            if (userManager.Users.Any() == true)
             {
-                foreach (UserToSeed userToSeed in usersToSeed)
+                return;
+            }
+
+            logger.LogInformation("Seeding Users to database");
+            foreach (UserToSeed userToSeed in usersToSeed)
+            {
+                var createUserResult = await userManager.CreateAsync(user: userToSeed.User, password: userToSeed.Password);
+
+                // Validate user creation
+                if (createUserResult.Succeeded == false)
                 {
-                    var createUserResult = await userManager.CreateAsync(user: userToSeed.User, password: userToSeed.Password);
-
-                    // Validate user creation
-                    if (createUserResult.Succeeded == false)
-                    {
-                        var errors = createUserResult.Errors.Select(e => e.Description);
-                        logger.LogError($"Failed to create user {userToSeed.User.UserName}. Errors: {string.Join(", ", errors)}");
-                        return;
-                    }
-
-                    foreach (UserRole role in userToSeed.Roles)
-                    {
-                        var addRoleResult = await userManager.AddToRoleAsync(user: userToSeed.User, role: role.ToString());
-
-                        if (addRoleResult.Succeeded == false)
-                        {
-                            var errors = addRoleResult.Errors.Select(e => e.Description);
-                            logger.LogError($"Failed to add {role} role to user {userToSeed.User.UserName}. Errors: {string.Join(", ", errors)}");
-                        }
-                    }
-
-                    logger.LogInformation($"{userToSeed.User.UserName} user is created");
+                    var errors = createUserResult.Errors.Select(e => e.Description);
+                    logger.LogError($"Failed to create user {userToSeed.User.UserName}. Errors: {string.Join(", ", errors)}");
+                    return;
                 }
+
+                foreach (UserRole role in userToSeed.Roles)
+                {
+                    var addRoleResult = await userManager.AddToRoleAsync(user: userToSeed.User, role: role.ToString());
+
+                    if (addRoleResult.Succeeded == false)
+                    {
+                        var errors = addRoleResult.Errors.Select(e => e.Description);
+                        logger.LogError($"Failed to add {role} role to user {userToSeed.User.UserName}. Errors: {string.Join(", ", errors)}");
+                    }
+                }
+
+                logger.LogInformation($"{userToSeed.User.UserName} user is created");
             }
         }
 
         public static async Task SeedVulnerabilities(IApplicationBuilder app)
         {
             using IServiceScope scope = app.ApplicationServices.CreateScope();
-
             ILogger<DbSeeder> logger = scope.ServiceProvider.GetRequiredService<ILogger<DbSeeder>>();
 
             try
             {
+                var vulnerabilityService = scope.ServiceProvider.GetRequiredService<VulnerabilityService>();
+
+                if (vulnerabilityService.GetVulnerabilities().Result.Count > 0)
+                {
+                    return;
+                }
+
+                logger.LogInformation("Seeding Vulnerabilities to database");
+
                 List<Vulnerability> vulnerabilities =
                 [
                     new Vulnerability
@@ -199,7 +209,6 @@ namespace Vuln.Data
                     },
                 ];
 
-                var vulnerabilityService = scope.ServiceProvider.GetRequiredService<VulnerabilityService>();
                 foreach (Vulnerability vulnerability in vulnerabilities)
                 {
                     await vulnerabilityService.AddVulnerability(vulnerability);
