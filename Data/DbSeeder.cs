@@ -1,7 +1,9 @@
 using System.Drawing;
+using System.Runtime.CompilerServices;
 using Microsoft.AspNetCore.Identity;
 using Vuln.Enums;
 using Vuln.Models;
+using Vuln.Services;
 
 namespace Vuln.Data
 {
@@ -14,7 +16,7 @@ namespace Vuln.Data
 
     public class DbSeeder
     {
-        public static async Task SeedData(IApplicationBuilder app)
+        public static async Task SeedRolesAndUsers(IApplicationBuilder app, bool shouldSeedUsers = false)
         {
             using IServiceScope scope = app.ApplicationServices.CreateScope();
 
@@ -22,14 +24,17 @@ namespace Vuln.Data
 
             try
             {
-                UserManager<ApplicationUser>? userManager = scope.ServiceProvider.GetService<UserManager<ApplicationUser>>() ??
-                    throw new Exception("Can not seed users: RoleManager is not available");
-
                 RoleManager<IdentityRole>? roleManager = scope.ServiceProvider.GetService<RoleManager<IdentityRole>>() ?? 
                     throw new Exception("Can not seed user roles: RoleManager is not available");
 
                 await SeedRoles(roleManager, logger);
-                await SeedUsers(userManager, logger);                
+
+                if (shouldSeedUsers)
+                {
+                    UserManager<ApplicationUser>? userManager = scope.ServiceProvider.GetService<UserManager<ApplicationUser>>() ??
+                        throw new Exception("Can not seed users: RoleManager is not available");
+                    await SeedUsers(userManager, logger);                
+                }
             }
             catch (Exception ex)
             {
@@ -130,5 +135,80 @@ namespace Vuln.Data
             }
         }
 
+        public static async Task SeedVulnerabilities(IApplicationBuilder app)
+        {
+            using IServiceScope scope = app.ApplicationServices.CreateScope();
+
+            ILogger<DbSeeder> logger = scope.ServiceProvider.GetRequiredService<ILogger<DbSeeder>>();
+
+            try
+            {
+                List<Vulnerability> vulnerabilities =
+                [
+                    new Vulnerability
+                    {
+                        Id = "vulnerability--c7cab3fb-0822-43a5-b1ba-c9bab34361a2",
+                        SpecVersion = "2.1",
+                        Created = DateTime.Parse("2015-05-15T09:12:16.432Z"),
+                        Modified = DateTime.Parse("2015-05-15T09:12:16.432Z"),
+                        Name = "CVE-2012-0158",
+                        Description = "Weaponized Microsoft Word document used by admin@338",
+                        ExternalReferences = 
+                        [
+                            new ExternalReference
+                            {
+                                SourceName = "cve",
+                                ExternalId = "CVE-2012-0158"
+                            }
+                        ]
+                    },
+                    new Vulnerability
+                    {
+                        Id = "vulnerability--6a2eab9c-9789-4437-812b-d74323fa3bca",
+                        SpecVersion = "2.1",
+                        Created = DateTime.Parse("2015-05-15T09:12:16.432Z"),
+                        Modified = DateTime.Parse("2015-05-15T09:12:16.432Z"),
+                        Name = "CVE-2009-4324",
+                        Description = "Adobe acrobat PDF's used by admin@338",
+                        ExternalReferences =
+                        [
+                            new ExternalReference
+                            {
+                                SourceName = "cve",
+                                ExternalId = "CVE-2009-4324"
+                            }
+                            
+                        ]
+                    },
+                    new Vulnerability
+                    {
+                        Id = "vulnerability--2b7f00d8-b133-4a92-9118-46ce5f8b2531",
+                        SpecVersion = "2.1",
+                        Created = DateTime.Parse("2015-05-15T09:12:16.432Z"),
+                        Modified = DateTime.Parse("2015-05-15T09:12:16.432Z"),
+                        Name = "CVE-2013-0422",
+                        Description = "Java 7 vulnerability exploited by th3bug",
+                        ExternalReferences =
+                        [
+                            new ExternalReference
+                            {
+                                SourceName = "cve",
+                                ExternalId = "CVE-2013-0422"
+                            }
+                        ]
+                    },
+                ];
+
+                var vulnerabilityService = scope.ServiceProvider.GetRequiredService<VulnerabilityService>();
+                foreach (Vulnerability vulnerability in vulnerabilities)
+                {
+                    await vulnerabilityService.AddVulnerability(vulnerability);
+                }
+            }
+            catch (Exception ex)
+            {
+                logger.LogCritical(ex.Message);
+            }
+        }
     }
 }

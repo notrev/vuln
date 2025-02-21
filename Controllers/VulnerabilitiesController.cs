@@ -12,28 +12,30 @@ namespace Vuln.Controllers
     [ProducesResponseType(StatusCodes.Status403Forbidden)]
     public class VulnerabilitiesController : ControllerBase
     {
+        private readonly ILogger<VulnerabilityService> _logger;
         private readonly VulnerabilityService _vulnerabilityService;
 
-        public VulnerabilitiesController(VulnerabilityService vulnerabilityService)
+        public VulnerabilitiesController(VulnerabilityService vulnerabilityService, ILogger<VulnerabilityService> logger)
         {
             _vulnerabilityService = vulnerabilityService;
+            _logger = logger;
         }
 
         [HttpGet]
         [Authorize(Roles = "Reader")]
         [ProducesResponseType(StatusCodes.Status200OK)]
-        public ActionResult<List<Vulnerability>> Get()
+        public async Task<ActionResult<List<Vulnerability>>> Get()
         {
-            return Ok(_vulnerabilityService.GetVulnerabilities());
+            return Ok(await _vulnerabilityService.GetVulnerabilities());
         }
 
         [HttpGet("{id}")]
         [Authorize(Roles = "Reader")]
         [ProducesResponseType(StatusCodes.Status200OK)]
         [ProducesResponseType(StatusCodes.Status404NotFound)]
-        public ActionResult<List<Vulnerability>> Get(string id)
+        public async Task<ActionResult<Vulnerability>> Get(string id)
         {
-            Vulnerability? vulnerability = _vulnerabilityService.GetVulnerability(id);
+            Vulnerability? vulnerability = await _vulnerabilityService.GetVulnerability(id);
 
             if (vulnerability != null) {
                 return Ok(vulnerability);
@@ -44,18 +46,23 @@ namespace Vuln.Controllers
         [HttpPost]
         [Authorize(Roles = "Writer")]
         [ProducesResponseType(StatusCodes.Status201Created)]
+        [ProducesResponseType(StatusCodes.Status409Conflict)]
         [ProducesResponseType(StatusCodes.Status500InternalServerError)]
-        public ActionResult Post([FromBody] Vulnerability vulnerability)
+        public async Task<ActionResult> Post([FromBody] Vulnerability vulnerability)
         {
             // TODO: validate input using JSON schema
             try
             {
-                _vulnerabilityService.AddVulnerability(vulnerability);
+                await _vulnerabilityService.AddVulnerability(vulnerability);
                 return Created();
+            }
+            catch (VulnerabilityDuplicateException)
+            {
+                return Conflict();
             }
             catch (Exception e)
             {
-                Console.WriteLine($"Error when adding new vulnerability: {e.Message}");
+                _logger.LogError($"Error when adding new vulnerability: {e.Message}");
                 return StatusCode(500);
             }
         }
@@ -64,17 +71,21 @@ namespace Vuln.Controllers
         [Authorize(Roles = "Writer")]
         [ProducesResponseType(StatusCodes.Status204NoContent)]
         [ProducesResponseType(StatusCodes.Status500InternalServerError)]
-        public ActionResult Put(string id, [FromBody] Vulnerability vulnerability)
+        public async Task<ActionResult> Put(string id, [FromBody] Vulnerability vulnerability)
         {
             // TODO: validate input using JSON schema
             try
             {
-                _vulnerabilityService.UpdateVulnerability(id, vulnerability);
+                await _vulnerabilityService.UpdateVulnerability(id, vulnerability);
                 return StatusCode(204);
+            }
+            catch (VulnerabilityNotFoundException)
+            {
+                return NotFound();
             }
             catch (Exception e)
             {
-                Console.WriteLine($"Error when adding new vulnerability: {e.Message}");
+                _logger.LogError($"Error when updating vulnerability: {e.Message}");
                 return StatusCode(500);
             }
         }
@@ -83,15 +94,19 @@ namespace Vuln.Controllers
         [Authorize(Roles = "Writer")]
         [ProducesResponseType(StatusCodes.Status204NoContent)]
         [ProducesResponseType(StatusCodes.Status500InternalServerError)]
-        public ActionResult Delete(string id) {
+        public async Task<ActionResult> Delete(string id) {
             try
             {
-                _vulnerabilityService.DeleteVulnerability(id);
+                await _vulnerabilityService.DeleteVulnerability(id);
                 return NoContent();
+            }
+            catch (VulnerabilityNotFoundException)
+            {
+                return NotFound();
             }
             catch (Exception e)
             {
-                Console.WriteLine($"Error when adding new vulnerability: {e.Message}");
+                _logger.LogError($"Error when deleting vulnerability: {e.Message}");
                 return StatusCode(500);
             }
         }

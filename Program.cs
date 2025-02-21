@@ -96,7 +96,7 @@ builder.Services.AddSwaggerGen(setup =>
 });
 
 // Register the VulnerabilityService for dependency injection
-builder.Services.AddSingleton<VulnerabilityService>();
+builder.Services.AddScoped<VulnerabilityService>();
 
 var app = builder.Build();
 
@@ -110,6 +110,7 @@ if (app.Environment.IsDevelopment())
         setup.SwaggerEndpoint("/swagger/v1/swagger.json", "Vulnerability API V1");
         setup.RoutePrefix = "docs";
     });
+    await DbSeeder.SeedVulnerabilities(app);
 }
 
 app.UseRouting();
@@ -117,6 +118,6 @@ app.UseAuthentication();
 app.UseAuthorization();
 app.MapControllers();
 app.UseHttpsRedirection();
-await DbSeeder.SeedData(app);
+await DbSeeder.SeedRolesAndUsers(app, app.Environment.IsDevelopment());
 
 app.Run();

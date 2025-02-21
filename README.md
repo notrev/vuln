@@ -51,6 +51,6 @@ Run the service with:
 dotnet run
 ```
 
-If running in development mode, swagger UI can be accessed at `http://localhost:5079/docs/`
+If running in development mode, Swagger UI will be made available at `http://localhost:5079/docs/`, some sample vulnerabilites and users with different roles will be created. The users login information can be found in the `Data/DbSeeder.cs` file.
 
 First, generate an authorization token by making a request to `/auth/token`. Then, make requests to other endpoints including the generated JWToken in the `Authorization` header as a Bearer token

@@ -8,5 +8,8 @@ namespace Vuln.Data
     public class ApplicationDbContext : IdentityDbContext<ApplicationUser, IdentityRole, string>
     {
         public ApplicationDbContext(DbContextOptions<ApplicationDbContext> options) : base(options) { }
+
+        public DbSet<Vulnerability> Vulnerability { get; set; }
+        public DbSet<ExternalReference> ExternalReferences { get; set; }
     }
 }
