@@ -24,9 +24,9 @@ namespace Vuln.Controllers
         [HttpGet]
         [Authorize(Roles = "Reader")]
         [ProducesResponseType(StatusCodes.Status200OK)]
-        public async Task<ActionResult<List<Vulnerability>>> Get()
+        public async Task<ActionResult<List<Vulnerability>>> Get(int offset = 0, int limit = 10)
         {
-            return Ok(await _vulnerabilityService.GetVulnerabilities());
+            return Ok(await _vulnerabilityService.GetVulnerabilities(offset, limit));
         }
 
         [HttpGet("{id}")]
