@@ -21,13 +21,36 @@ JwtSettings__ExpirationInMinutes=15
 
 Content in `.env` file will overwrite the ones in `appsettings.json`.
 
-## Run the service:
+## Run the service locally:
 
-From the project root folder, run
+### Database
+
+```sh
+docker compose db up
+```
+
+This will start a `postgres` container and will setup a port-forwarding in port `5432` and the database will be accessible via `localhost:5432`.
+
+Default username and password can be found in `docker-compose.yml` file.
+
+#### Setting up Database Tables
+
+In order to run the command below, `dotnet-ef` needs to be installed. See installation instructions at (Entity Framework Core tools)[https://learn.microsoft.com/en-us/ef/core/cli/dotnet]
+
+To setup the DB tables, run:
+
+```sh
+dotnet ef database update
+```
+
+### API Service
+
+Run the service with:
+
 ```sh
 dotnet run
 ```
 
-Access swagger interface at `http://localhost:5079/docs/`
+If running in development mode, swagger UI can be accessed at `http://localhost:5079/docs/`
 
-First, generate an authorization token by making a request to `/auth/token`. Then, make request to other endpoints including the generated JWToken in the `Authorization` header as a Bearer token
+First, generate an authorization token by making a request to `/auth/token`. Then, make requests to other endpoints including the generated JWToken in the `Authorization` header as a Bearer token
